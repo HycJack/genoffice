@@ -264,3 +264,45 @@
   justify-content: flex-end;
   gap: 8px;
 }
+
+/* AI section: text inputs (API key / model / base URL) and hints */
+.set-field-input {
+  align-items: flex-start;
+}
+
+.set-field-input .set-field-text {
+  flex: 0 0 120px;
+  justify-content: flex-start;
+}
+
+.set-input {
+  flex: 1;
+  min-width: 0;
+  height: 32px;
+  padding: 6px 10px;
+  border: 1px solid var(--border-subtle);
+  border-radius: 8px;
+  background: var(--surface);
+  color: var(--text-primary);
+  font: inherit;
+  font-size: 13px;
+}
+
+.set-input::placeholder {
+  color: var(--text-tertiary);
+}
+
+.set-input:focus {
+  outline: none;
+  border-color: var(--color-btn-primary);
+}
+
+.set-ai-hint {
+  margin: 10px 0 0;
+  padding: 10px 12px;
+  border-radius: 8px;
+  background: var(--bg-content);
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--text-secondary);
+}

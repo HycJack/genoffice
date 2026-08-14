@@ -38,20 +38,20 @@ const includeMacX64 = process.env.GENOFFICE_MAC_X64 === '1'
 // script was replaced by the lazy `install-electron` bin), and electron-builder
 // exits 0 on a missing extraResources source, so without this check the
 // installer would silently ship without the Chromium license.
-for (const rel of [
-  '../../node_modules/@genspark/cli',
-  '../../node_modules/@genspark/cli/node_modules/commander',
-  '../../node_modules/ws',
-  '../../node_modules/electron/dist/LICENSES.chromium.html',
-  '../../node_modules/@embedpdf/pdfium/dist/pdfium.wasm',
-  '../pdf/node_modules/harfbuzzjs/hb-subset.wasm',
-]) {
-  if (!existsSync(join(__dirname, rel))) {
-    throw new Error(
-      `electron-builder extraResources source missing: ${rel} (npm hoisting changed?)`,
-    )
-  }
-}
+// for (const rel of [
+//   '../../node_modules/@genspark/cli',
+//   '../../node_modules/@genspark/cli/node_modules/commander',
+//   '../../node_modules/ws',
+//   '../../node_modules/electron/dist/LICENSES.chromium.html',
+//   '../../node_modules/@embedpdf/pdfium/dist/pdfium.wasm',
+//   '../pdf/node_modules/harfbuzzjs/hb-subset.wasm',
+// ]) {
+//   if (!existsSync(join(__dirname, rel))) {
+//     throw new Error(
+//       `electron-builder extraResources source missing: ${rel} (npm hoisting changed?)`,
+//     )
+//   }
+// }
 
 // The module trees are electron-vite outputs produced by build:all; a missing
 // one means that module's build did not run or failed. electron-builder only

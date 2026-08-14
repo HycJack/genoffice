@@ -2487,8 +2487,9 @@ export function registerAiIpc(): void {
   ipcMain.handle('ai:get-settings', (): AiSettings => {
     const stored = readJson<Partial<AiSettings> & LegacyAiSettings>(SETTINGS_PATH(), {})
     const settings = resolveAiSettings(stored, defaultAiSettings())
-    // AI features all go through Genspark (gsk login); legacy settings with another provider are reset
-    settings.provider = 'genspark'
+    // Default to Genspark (gsk login) when no provider has been chosen by the user;
+    // any explicitly configured provider (anthropic/openai/custom/...) is honored as-is.
+    if (!stored.provider) settings.provider = 'genspark'
     return settings
   })
 

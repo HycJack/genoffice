@@ -13,6 +13,7 @@ import type {
   TimelineEntryItem,
   UiLanguage,
 } from '../shared/home-api'
+import type { AiSettings } from '@genoffice/ai-provider'
 import { HOME_CHANNELS, PROJECT_CHANNELS } from '../shared/home-api'
 import type { TabsApi, TabSummary } from '../shared/tabs-api'
 import { TABS_CHANNELS } from '../shared/tabs-api'
@@ -204,6 +205,13 @@ const homeApi: HomeApi = {
   async openCloudProject(projectUrl) {
     if (typeof projectUrl !== 'string' || !projectUrl) throw new Error('Invalid project URL.')
     await ipcRenderer.invoke(HOME_CHANNELS.openCloudProject, projectUrl)
+  },
+  async getAiSettings() {
+    const result: unknown = await ipcRenderer.invoke(HOME_CHANNELS.getAiSettings)
+    return result as AiSettings
+  },
+  async setAiSettings(settings) {
+    await ipcRenderer.invoke(HOME_CHANNELS.setAiSettings, settings)
   },
 }
 

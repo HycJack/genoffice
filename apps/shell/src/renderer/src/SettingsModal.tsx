@@ -3,6 +3,12 @@ import type { ReactNode } from 'react'
 import { useI18n } from './locale'
 import type { StringKey } from './locale'
 import type { AccountStatus, UiTheme } from '../../shared/home-api'
+import {
+  AI_PROVIDERS,
+  type AiProviderId,
+  type AiProviderMeta,
+  type AiSettings,
+} from '@genoffice/ai-provider'
 import './settings.css'
 
 // ── Settings modal (opened from the account menu) ─────────
@@ -45,13 +51,19 @@ const CHANNEL_OPTIONS = [
   { value: 'beta', labelKey: 'channelBeta' },
 ] as const satisfies readonly { value: 'stable' | 'beta'; labelKey: StringKey }[]
 
-type SectionId = 'account' | 'general' | 'about'
+type SectionId = 'account' | 'general' | 'ai' | 'about'
 
 const SECTIONS: readonly { id: SectionId; labelKey: StringKey }[] = [
   { id: 'account', labelKey: 'setSecAccount' },
   { id: 'general', labelKey: 'setSecGeneral' },
+  { id: 'ai', labelKey: 'setSecAi' },
   { id: 'about', labelKey: 'setSecAbout' },
 ]
+
+// Providers selectable in the UI; "genspark" is included so users can switch back to the default.
+const AI_PROVIDER_OPTIONS: readonly { value: AiProviderId; label: string }[] = AI_PROVIDERS.map(
+  (p: AiProviderMeta) => ({ value: p.id, label: p.label }),
+)
 
 function SectionIcon({ id }: { id: SectionId }) {
   if (id === 'account') {
@@ -78,6 +90,19 @@ function SectionIcon({ id }: { id: SectionId }) {
         />
         <circle cx="11.5" cy="5" r="1.7" stroke="currentColor" strokeWidth="1.3" />
         <circle cx="4.5" cy="11" r="1.7" stroke="currentColor" strokeWidth="1.3" />
+      </svg>
+    )
+  }
+  if (id === 'ai') {
+    return (
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+        <path
+          d="M8 2v2.2M8 11.8V14M2 8h2.2M11.8 8H14M3.7 3.7l1.6 1.6M10.7 10.7l1.6 1.6M12.3 3.7l-1.6 1.6M5.3 10.7l-1.6 1.6"
+          stroke="currentColor"
+          strokeWidth="1.3"
+          strokeLinecap="round"
+        />
+        <circle cx="8" cy="8" r="2.2" stroke="currentColor" strokeWidth="1.3" />
       </svg>
     )
   }
@@ -150,6 +175,11 @@ export function SettingsModal({
   const [channel, setChannel] = useState<'stable' | 'beta'>('stable')
   const [appVersion, setAppVersion] = useState('')
 
+  // AI provider config (loaded on first visit of the AI section)
+  const [aiSettings, setAiSettings] = useState<AiSettings | null>(null)
+  const [aiSaving, setAiSaving] = useState(false)
+  const [aiSavedAt, setAiSavedAt] = useState(0)
+
   useEffect(() => {
     let alive = true
     void window.aiOffice.getTheme?.().then((th) => {
@@ -163,6 +193,9 @@ export function SettingsModal({
     })
     void window.aiOffice.getAppVersion?.().then((v) => {
       if (alive && v) setAppVersion(v)
+    })
+    void window.aiOffice.getAiSettings?.().then((s) => {
+      if (alive && s) setAiSettings(s)
     })
     return () => {
       alive = false
@@ -187,6 +220,39 @@ export function SettingsModal({
   const changeSaveDir = () => {
     void window.aiOffice.pickDefaultSaveDir?.().then((dir) => {
       if (dir) setSaveDir(dir)
+    })
+  }
+
+  // ── AI provider config helpers ──
+  // Local edits update the in-memory snapshot; "Save" persists via setAiSettings.
+  const currentProvider = aiSettings?.provider ?? 'genspark'
+  const currentProviderMeta = AI_PROVIDERS.find((p) => p.id === currentProvider)
+  const currentProviderConfig = aiSettings?.providers?.[currentProvider]
+
+  const updateAiField = (field: 'apiKey' | 'model' | 'baseUrl', value: string) => {
+    setAiSettings((prev) => {
+      if (!prev) return prev
+      const cfg = prev.providers[currentProvider] ?? { apiKey: '', model: '', baseUrl: '' }
+      return {
+        ...prev,
+        providers: {
+          ...prev.providers,
+          [currentProvider]: { ...cfg, [field]: value },
+        },
+      }
+    })
+  }
+
+  const switchAiProvider = (next: AiProviderId) => {
+    setAiSettings((prev) => (prev ? { ...prev, provider: next } : prev))
+  }
+
+  const saveAiSettings = () => {
+    if (!aiSettings) return
+    setAiSaving(true)
+    void window.aiOffice.setAiSettings?.(aiSettings).then(() => {
+      setAiSaving(false)
+      setAiSavedAt(Date.now())
     })
   }
 
@@ -338,6 +404,116 @@ export function SettingsModal({
                     </button>
                   }
                 />
+              </>
+            )}
+            {section === 'ai' && (
+              <>
+                <h3 className="set-pane-title">{t('setSecAi')}</h3>
+                <div className="set-field">
+                  <div className="set-field-text">
+                    <label className="set-field-label" htmlFor="set-ai-provider">
+                      {t('setAiProvider')}
+                    </label>
+                  </div>
+                  <span className="set-select-wrap">
+                    <span className="set-select-text" aria-hidden="true">
+                      {AI_PROVIDER_OPTIONS.find((o) => o.value === currentProvider)?.label ??
+                        currentProvider}
+                    </span>
+                    <select
+                      id="set-ai-provider"
+                      className="set-select"
+                      value={currentProvider}
+                      onChange={(e) => switchAiProvider(e.target.value as AiProviderId)}
+                    >
+                      {AI_PROVIDER_OPTIONS.map((opt) => (
+                        <option key={opt.value} value={opt.value}>
+                          {opt.label}
+                        </option>
+                      ))}
+                    </select>
+                  </span>
+                </div>
+
+                {currentProvider === 'genspark' && (
+                  <div className="set-ai-hint">{t('setAiGensparkHint')}</div>
+                )}
+
+                {currentProvider !== 'genspark' && (
+                  <>
+                    <div className="set-field set-field-input">
+                      <div className="set-field-text">
+                        <label className="set-field-label" htmlFor="set-ai-key">
+                          {t('setAiApiKey')}
+                        </label>
+                      </div>
+                      <input
+                        id="set-ai-key"
+                        className="set-input"
+                        type="password"
+                        autoComplete="off"
+                        spellCheck={false}
+                        placeholder={currentProviderMeta?.keyPlaceholder ?? ''}
+                        value={currentProviderConfig?.apiKey ?? ''}
+                        onChange={(e) => updateAiField('apiKey', e.target.value)}
+                      />
+                    </div>
+                    <div className="set-field set-field-input">
+                      <div className="set-field-text">
+                        <label className="set-field-label" htmlFor="set-ai-model">
+                          {t('setAiModel')}
+                        </label>
+                      </div>
+                      <input
+                        id="set-ai-model"
+                        className="set-input"
+                        type="text"
+                        spellCheck={false}
+                        placeholder={currentProviderMeta?.defaultModel ?? ''}
+                        value={currentProviderConfig?.model ?? ''}
+                        onChange={(e) => updateAiField('model', e.target.value)}
+                        list="set-ai-model-list"
+                      />
+                      <datalist id="set-ai-model-list">
+                        {currentProviderMeta?.models.map((m) => (
+                          <option key={m} value={m} />
+                        ))}
+                      </datalist>
+                    </div>
+                    {currentProviderMeta?.needsBaseUrl && (
+                      <div className="set-field set-field-input">
+                        <div className="set-field-text">
+                          <label className="set-field-label" htmlFor="set-ai-baseurl">
+                            {t('setAiBaseUrl')}
+                          </label>
+                        </div>
+                        <input
+                          id="set-ai-baseurl"
+                          className="set-input"
+                          type="text"
+                          spellCheck={false}
+                          placeholder="https://api.openai.com/v1"
+                          value={currentProviderConfig?.baseUrl ?? ''}
+                          onChange={(e) => updateAiField('baseUrl', e.target.value)}
+                        />
+                      </div>
+                    )}
+                    <div className="set-pane-footer">
+                      <button
+                        className="set-btn primary"
+                        disabled={aiSaving || !aiSettings}
+                        onClick={saveAiSettings}
+                      >
+                        {aiSaving
+                          ? t('waitingShort')
+                          : aiSavedAt
+                            ? t('setAiSaved')
+                            : t('setAiSave')}
+                      </button>
+                    </div>
+                    <div className="set-ai-hint">{t('setAiCustomHint')}</div>
+                  </>
+                )}
               </>
             )}
             {section === 'about' && (
