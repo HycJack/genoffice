@@ -89,7 +89,7 @@
   "dependencies": {
     "@genoffice/electron-utils": "*",
     "acorn": "^8.18.0",
-    "harfbuzzjs": "^1.4.0",
+    "harfbuzzjs": "^1.6.0",
     "pngjs": "^7.0.0",
     "utif2": "^4.1.0"
   }
